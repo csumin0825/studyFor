@@ -1,5 +1,3 @@
-console.log("HI");
-
 var http = require("http"); //모듈이면서 객체
 var fs = require("fs");
 var url = require("url");
