@@ -1,10 +1,10 @@
 var express = require("express"); //모듈을 불러오기
 var app = express(); //express(함수)의 리턴값을 app에 저장
 var fs = require("fs");
-var path = require("path");
 var bodyParser = require("body-parser");
-var sanitizeHtml = require("sanitize-html");
 var compression = require("compression");
+var helmat = require("helmat");
+app.use(helmat());
 
 var indexRouter = require("./routes/index");
 var topicRouter = require("./routes/topic");
