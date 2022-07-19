@@ -8,6 +8,7 @@ var sanitizeHtml = require("sanitize-html");
 var compression = require("compression");
 var template = require("./lib/template.js");
 
+app.use(express.static("public"));
 // bodyParser.urlencoded({ extended: false }) : body-parser가 만들어내는 미들웨어를 표현하는 표현식
 // 사용자가 요청할 떄마다 표현식에 의해 만들어진 미들웨어가 실행됨 (미들웨어가 어떻게 생겼는지는 모름)
 // 사용자가 전송한 post 데이터를 내부적으로 분석해서 경로에 해당되는 콜백함수를 호출하기로 약속
@@ -40,34 +41,39 @@ app.get("/", function (request, response) {
   var html = template.HTML(
     title,
     list,
-    `<h2>${title}</h2>${description}`,
+    `<h2>${title}</h2>${description}
+    <img src="/images/hello.jpg" style="width:300px; display:block; margin-top:10px;">`,
     `<a href="/create">create</a>`
   );
   response.send(html);
 });
 
 //localhost:3000/page 로 접속할 경우
-app.get("/page/:pageId", function (request, response) {
+app.get("/page/:pageId", function (request, response, next) {
   var filteredId = path.parse(request.params.pageId).base;
   fs.readFile(`data/${filteredId}`, "utf8", function (err, description) {
-    var title = request.params.pageId;
-    var sanitizedTitle = sanitizeHtml(title);
-    var sanitizedDescription = sanitizeHtml(description, {
-      allowedTags: ["h1"],
-    });
-    var list = template.list(request.list);
-    var html = template.HTML(
-      sanitizedTitle,
-      list,
-      `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`,
-      ` <a href="/create">create</a>
+    if (err) {
+      next(err); //바로 에러 핸들링 미들웨어 호출
+    } else {
+      var title = request.params.pageId;
+      var sanitizedTitle = sanitizeHtml(title);
+      var sanitizedDescription = sanitizeHtml(description, {
+        allowedTags: ["h1"],
+      });
+      var list = template.list(request.list);
+      var html = template.HTML(
+        sanitizedTitle,
+        list,
+        `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`,
+        ` <a href="/create">create</a>
           <a href="/update/${sanitizedTitle}">update</a>
           <form action="/delete_process" method="post">
             <input type="hidden" name="id" value="${sanitizedTitle}">
             <input type="submit" value="delete">
           </form>`
-    );
-    response.send(html);
+      );
+      response.send(html);
+    }
   });
 });
 
@@ -148,6 +154,17 @@ app.post("/delete_process", function (request, response) {
   fs.unlink(`data/${filteredId}`, function (error) {
     response.redirect("/");
   });
+});
+
+//존재하지 않는 페이지를 찾을 경우 404 에러
+app.use(function (req, res, next) {
+  res.status(404).send("Sorry cant find that!");
+});
+
+//인자가 err,req,res,next 4개인 함수는 에러를 핸들링하기 위한 미들웨어로 하자는 약속이 되어있음
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send("Something broke!");
 });
 
 //listen : 3000번 포트에 리스닝, 성공하면 console.log 실행
